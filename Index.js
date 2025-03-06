@@ -1,52 +1,55 @@
-const { WAConnection, MessageType } = require('@adiwajshing/baileys');
-const fs = require('fs');
-const path = require('path');
-const config = require('./config'); // Assurez-vous que config.js est bien configuré
+// index.js
 
-const client = new WAConnection();
+// Charger les modules nécessaires
+const { Client } = require('whatsapp-web.js'); // Client WhatsApp
+const fs = require('fs'); // Pour gérer les fichiers
+const qrcode = require('qrcode-terminal'); // Générer le QR code pour l'authentification
+const config = require('./config.js'); // Charger la configuration du bot
 
-const commands = new Map(); // Stockage des commandes
+// Initialiser le client WhatsApp
+const client = new Client();
 
-// Chargement des commandes depuis le dossier 'commands'
-const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    commands.set(command.name, command);
-}
-
-client.on('open', () => {
-    console.log('✅ Bot connecté avec succès !');
+// Afficher le QR code pour l'authentification
+client.on('qr', (qr) => {
+    qrcode.generate(qr, { small: true });
+    console.log('Scannez le QR code ci-dessus pour connecter votre WhatsApp');
 });
 
-client.on('chat-update', async (chat) => {
-    if (!chat.hasNewMessage) return;
-    const message = chat.messages.all()[0];
+// Une fois que le client est prêt, on l'informe que le bot est en ligne
+client.on('ready', () => {
+    console.log(`${config.botName} est maintenant en ligne !`);
+});
 
-    if (!message.message) return;
-    const messageType = Object.keys(message.message)[0];
+// Lorsque le bot reçoit un message, il effectue une action en fonction de la commande
+client.on('message', (message) => {
+    // Récupérer le contenu du message et le préfixe
+    const content = message.body.toLowerCase();
+    
+    // Commande de ping pour vérifier si le bot fonctionne
+    if (content === `${config.prefix}ping`) {
+        message.reply('Pong! Le bot fonctionne parfaitement.');
+    }
 
-    if (messageType !== 'conversation' && messageType !== 'extendedTextMessage') return;
+    // Commande pour afficher le menu
+    if (content === `${config.prefix}menu`) {
+        message.reply('Chargement du menu...\n[░░░░░░░░░░] 0%\n[██░░░░░░░░] 25%\n[████░░░░░░] 50%\n[██████░░░░] 75%\n[██████████] 100%\n\nVoici le menu principal:\n1. Aide\n2. Statut\n3. Ping');
+    }
 
-    const from = message.key.remoteJid;
-    const text = message.message.conversation || message.message.extendedTextMessage.text;
-    const args = text.trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
+    // Commande pour afficher l'aide
+    if (content === `${config.prefix}help`) {
+        message.reply('Voici la liste des commandes disponibles :\n1. !ping - Vérifie si le bot fonctionne\n2. !menu - Affiche le menu principal\n3. !status - Affiche le statut du bot');
+    }
 
-    if (commands.has(commandName)) {
-        try {
-            await commands.get(commandName).execute(client, { from, sender: message.key.participant }, args);
-        } catch (error) {
-            console.error(`❌ Erreur dans la commande ${commandName}:`, error);
-            client.sendMessage(from, '⚠️ Une erreur est survenue lors de l\'exécution de la commande.', MessageType.text);
-        }
+    // Commande pour afficher le statut du bot
+    if (content === `${config.prefix}status`) {
+        message.reply(`${config.botName} est en ligne et fonctionne normalement. Version: ${config.version}`);
     }
 });
 
-// Connexion du bot
-async function startBot() {
-    await client.connect();
-    fs.writeFileSync('./auth_info.json', JSON.stringify(client.base64EncodedAuthInfo(), null, 2));
-}
+// Gérer les erreurs du client
+client.on('error', (err) => {
+    console.error('Erreur survenue :', err);
+});
 
-startBot().catch(err => console.error('Erreur lors de la connexion du bot :', err));
+// Démarrer le client WhatsApp
+client.initialize();
