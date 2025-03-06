@@ -1,0 +1,33 @@
+# Node.js modules
+node_modules/
+
+# Fichiers de log
+*.log
+
+# Fichiers de session (éviter de pousser des informations sensibles comme les sessions)
+session.json
+
+# Dossier des fichiers temporaires générés par npm
+npm-debug.log*
+
+# Fichiers d'éditeur
+.vscode/
+.idea/
+
+# Fichiers de configuration spécifiques à l'éditeur de texte
+*.swp
+*.swo
+
+# Cache de dépendances et fichiers compilés
+/dist/
+build/
+
+# Fichiers de configuration et autres fichiers sensibles
+.env
+*.env
+
+# Ignorer les fichiers de test (si tu en as)
+tests/
+
+# Fichiers de configuration de dépendances
+package-lock.json (optionnel si tu veux le versionner)
