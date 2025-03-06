@@ -1,51 +1,52 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const Pino = require('pino');
+const { WAConnection, MessageType } = require('@adiwajshing/baileys');
 const fs = require('fs');
 const path = require('path');
+const config = require('./config'); // Assurez-vous que config.js est bien configuré
 
-// 📌 Chargement de la session
-const sessionPath = path.join(__dirname, 'session'); // Dossier session
-fs.existsSync(sessionPath) || fs.mkdirSync(sessionPath); // Création si inexistant
+const client = new WAConnection();
 
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-    
-    const sock = makeWASocket({
-        auth: state,
-        logger: Pino({ level: 'silent' }),
-        printQRInTerminal: true, // Afficher le QR code dans le terminal
-    });
+const commands = new Map(); // Stockage des commandes
 
-    // 📌 Sauvegarde des credentials
-    sock.ev.on('creds.update', saveCreds);
+// Chargement des commandes depuis le dossier 'commands'
+const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
 
-    // 📌 Événement lors de la connexion
-    sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-        if (connection === 'close') {
-            console.log('[⚠] Connexion fermée, tentative de reconnexion...');
-            startBot(); // Relancer le bot en cas de déconnexion
-        } else if (connection === 'open') {
-            console.log('[✅] Connecté à WhatsApp !');
-        }
-    });
-
-    // 📌 Gestion des messages entrants
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-
-        const chatId = msg.key.remoteJid;
-        const messageText = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-
-        console.log(`[💬] Message reçu : ${messageText}`);
-
-        // 📌 Commandes
-        if (messageText.startsWith('!ping')) {
-            await sock.sendMessage(chatId, { text: 'Pong !' });
-        } else if (messageText.startsWith('!menu')) {
-            await sock.sendMessage(chatId, { text: '📜 Menu :\n1. !ping\n2. !menu' });
-        }
-    });
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    commands.set(command.name, command);
 }
 
-startBot();
+client.on('open', () => {
+    console.log('✅ Bot connecté avec succès !');
+});
+
+client.on('chat-update', async (chat) => {
+    if (!chat.hasNewMessage) return;
+    const message = chat.messages.all()[0];
+
+    if (!message.message) return;
+    const messageType = Object.keys(message.message)[0];
+
+    if (messageType !== 'conversation' && messageType !== 'extendedTextMessage') return;
+
+    const from = message.key.remoteJid;
+    const text = message.message.conversation || message.message.extendedTextMessage.text;
+    const args = text.trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    if (commands.has(commandName)) {
+        try {
+            await commands.get(commandName).execute(client, { from, sender: message.key.participant }, args);
+        } catch (error) {
+            console.error(`❌ Erreur dans la commande ${commandName}:`, error);
+            client.sendMessage(from, '⚠️ Une erreur est survenue lors de l\'exécution de la commande.', MessageType.text);
+        }
+    }
+});
+
+// Connexion du bot
+async function startBot() {
+    await client.connect();
+    fs.writeFileSync('./auth_info.json', JSON.stringify(client.base64EncodedAuthInfo(), null, 2));
+}
+
+startBot().catch(err => console.error('Erreur lors de la connexion du bot :', err));
