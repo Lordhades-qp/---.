@@ -41,11 +41,11 @@ Git installé
 Un numéro WhatsApp dédié
 
 
-2️⃣ Cloner le dépôt
+2️⃣ 𝚘𝚋𝚝𝚒𝚎𝚗𝚝 𝚝'𝚊 𝚜𝚎𝚜𝚜𝚒𝚘𝚗𝚜
+https://murphy-md.onrender.com
 
-git clone https://github.com/mikaelsonangel844/atomic-bot.git  
-cd atomic-bot
 
+   
 3️⃣ Installer les dépendances
 
 npm install
