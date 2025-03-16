@@ -1,0 +1,28 @@
+name: Deploy Atomic bot
+
+on:
+  push:
+    branches:
+      - main  # Déclenche le workflow lorsqu'il y a un push sur la branche main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Cloner le dépôt
+        uses: actions/checkout@v3
+
+      - name: 🛠 Installer Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 📦 Installer les dépendances
+        run: npm install
+
+      - name: 🚀 Démarrer l'application
+        run: pm2 restart index.js --name "Murphy-MD"
+
+      - name: ✅ Déploiement terminé
+        run: echo "Déploiement réussi !"
