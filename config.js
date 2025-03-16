@@ -16,7 +16,7 @@ module.exports = {
   version: '1.0.0',
 
   // ID du créateur (si applicable)
-  ownerId: '2250565647864',
+  ownerId: '242057954499',
 
   // Configuration des logs
   logging: {
